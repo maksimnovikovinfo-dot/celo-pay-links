@@ -1,0 +1,165 @@
+"use client";
+
+import { useState } from 'react';
+import { useAccount, useConnect, useDisconnect, useChainId, useSwitchChain, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { parseUnits } from 'viem';
+import { celoSepolia, CONTRACT_ADDRESS } from './config';
+
+const USDC_ADDRESS = '0x01C5C0122039549AD1493B8220cABEdD739BC44E';
+
+const contractAbi = [
+  {
+    "inputs": [{ "internalType": "address", "name": "spender", "type": "address" }, { "internalType": "uint256", "name": "amount", "type": "uint256" }],
+    "name": "approve",
+    "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "address", "name": "receiver", "type": "address" },
+      { "internalType": "uint256", "name": "amount", "type": "uint256" },
+      { "internalType": "string", "name": "linkId", "type": "string" }
+    ],
+    "name": "payTo",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+];
+
+export default function Home() {
+  const { address, isConnected } = useAccount();
+  const { connect, connectors } = useConnect();
+  const { disconnect } = useDisconnect();
+  const { writeContract, data: hash, isPending } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash });
+  const chainId = useChainId();
+  const { switchChain } = useSwitchChain();
+
+  const [showForm, setShowForm] = useState(false);
+  const [amount, setAmount] = useState('');
+  const [generatedLink, setGeneratedLink] = useState<string | null>(null);
+
+  // Función que se ejecuta al enviar el formulario
+  const handleCreateLink = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!amount || !address) return;
+
+    if (chainId !== celoSepolia.id) {
+      try { switchChain({ chainId: celoSepolia.id }); return; } 
+      catch (error) { alert("Cambia a Celo Sepolia en tu billetera."); return; }
+    }
+
+    try {
+      const linkId = Math.random().toString(36).substring(7);
+      
+      // 1. Aprobar el gasto
+      await writeContract({
+        address: USDC_ADDRESS as `0x${string}`,
+        abi: contractAbi,
+        functionName: 'approve',
+        args: [CONTRACT_ADDRESS as `0x${string}`, parseUnits(amount, 6)],
+      });
+
+      // Nota: En una app real, esperaríamos a que se confirme el approve antes de pagar.
+      // Para simplificar, generamos el enlace directamente después de la firma.
+      
+      const link = `${window.location.origin}/pay/${linkId}?amount=${amount}&to=${address}`;
+      setGeneratedLink(link);
+      alert(`¡Enlace generado!\n\nEl enlace es: ${link}\n\n(Para probar el pago real, abre ese enlace en otra pestaña)`);
+      
+      setAmount('');
+      setShowForm(false);
+    } catch (error) {
+      console.error(error);
+      alert("Error al preparar la transacción.");
+    }
+  };
+
+  return (
+    <main className="flex min-h-screen flex-col items-center justify-center p-24 bg-gray-900 text-white">
+      <div className="text-center w-full max-w-md">
+        <h1 className="text-5xl font-bold mb-4 text-green-400">CeloPay Links</h1>
+        <p className="text-xl mb-8">Crea enlaces de pago en USDC en la red Celo.</p>
+
+        {isConnected ? (
+          <div className="flex flex-col items-center gap-4 w-full">
+            <p className="text-green-300 font-mono bg-gray-800 p-2 rounded">
+              Conectado: {address?.slice(0, 6)}...{address?.slice(-4)}
+            </p>
+            
+            {!showForm && !generatedLink ? (
+              <button
+                onClick={() => setShowForm(true)}
+                className="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg transition-colors w-full"
+              >
+                Crear nuevo enlace de pago
+              </button>
+            ) : showForm ? (
+              <form onSubmit={handleCreateLink} className="flex flex-col gap-3 w-full bg-gray-800 p-4 rounded-lg">
+                <label className="text-left text-sm text-gray-300">¿Cuánto quieres cobrar? (USDC)</label>
+                <input
+                  type="number"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  placeholder="Ej: 10"
+                  className="p-2 rounded text-black"
+                  required
+                />
+                <button
+                  type="submit"
+                  disabled={isPending || isConfirming}
+                  className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition-colors disabled:bg-gray-500"
+                >
+                  {isPending ? 'Firmando...' : isConfirming ? 'Confirmando...' : 'Generar Enlace'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowForm(false)}
+                  className="text-gray-400 text-sm hover:text-white"
+                >
+                  Cancelar
+                </button>
+              </form>
+            ) : (
+              <div className="flex flex-col gap-3 w-full bg-gray-800 p-4 rounded-lg">
+                <p className="text-green-300 font-bold text-lg">¡Enlace de pago generado!</p>
+                <p className="text-sm text-gray-300 break-all bg-black p-2 rounded">{generatedLink}</p>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(generatedLink || '');
+                    alert("¡Enlace copiado!");
+                  }}
+                  className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition-colors"
+                >
+                  Copiar Enlace
+                </button>
+                <button
+                  onClick={() => setGeneratedLink(null)}
+                  className="text-gray-400 text-sm hover:text-white mt-2"
+                >
+                  Crear otro enlace
+                </button>
+              </div>
+            )}
+
+            <button
+              onClick={() => disconnect()}
+              className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition-colors mt-4 w-full"
+            >
+              Desconectar
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => connect({ connector: connectors[0] })}
+            className="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg transition-colors w-full"
+          >
+            Conectar Billetera
+          </button>
+        )}
+      </div>
+    </main>
+  );
+}
