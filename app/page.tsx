@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from 'react';
-import { useAccount, useConnect, useDisconnect, useChainId, useSwitchChain, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { useState, useEffect } from 'react';
+import { useAccount, useConnect, useDisconnect, useChainId, useSwitchChain, useWriteContract } from 'wagmi';
 import { parseUnits } from 'viem';
-import { celoSepolia, CONTRACT_ADDRESS } from './config';
+import { celo, CONTRACT_ADDRESS } from './config';
 
-const USDC_ADDRESS = '0x01C5C0122039549AD1493B8220cABEdD739BC44E';
+const USDC_ADDRESS = '0xcebA9300f2b948710d2653dD7B07f33A8B32118C';
 
 const contractAbi = [
   {
@@ -32,29 +32,36 @@ export default function Home() {
   const { address, isConnected } = useAccount();
   const { connect, connectors } = useConnect();
   const { disconnect } = useDisconnect();
-  const { writeContract, data: hash, isPending } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash });
+  const { writeContract, isPending } = useWriteContract();
   const chainId = useChainId();
   const { switchChain } = useSwitchChain();
 
   const [showForm, setShowForm] = useState(false);
   const [amount, setAmount] = useState('');
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
+  const [isMiniPay, setIsMiniPay] = useState(false);
 
-  // Función que se ejecuta al enviar el formulario
+  useEffect(() => {
+    if (typeof window !== 'undefined' && (window as any).ethereum?.isMiniPay) {
+      setIsMiniPay(true);
+      if (!isConnected) {
+        connect({ connector: connectors[0] });
+      }
+    }
+  }, [isConnected, connect, connectors]);
+
   const handleCreateLink = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!amount || !address) return;
 
-    if (chainId !== celoSepolia.id) {
-      try { switchChain({ chainId: celoSepolia.id }); return; } 
-      catch (error) { alert("Cambia a Celo Sepolia en tu billetera."); return; }
+    if (chainId !== celo.id) {
+      try { switchChain({ chainId: celo.id }); return; } 
+      catch (error) { alert("Cambia a Celo Mainnet en tu billetera."); return; }
     }
 
     try {
       const linkId = Math.random().toString(36).substring(7);
       
-      // 1. Aprobar el gasto
       await writeContract({
         address: USDC_ADDRESS as `0x${string}`,
         abi: contractAbi,
@@ -62,12 +69,9 @@ export default function Home() {
         args: [CONTRACT_ADDRESS as `0x${string}`, parseUnits(amount, 6)],
       });
 
-      // Nota: En una app real, esperaríamos a que se confirme el approve antes de pagar.
-      // Para simplificar, generamos el enlace directamente después de la firma.
-      
       const link = `${window.location.origin}/pay/${linkId}?amount=${amount}&to=${address}`;
       setGeneratedLink(link);
-      alert(`¡Enlace generado!\n\nEl enlace es: ${link}\n\n(Para probar el pago real, abre ese enlace en otra pestaña)`);
+      alert(`¡Enlace generado!\n\nEl enlace es: ${link}`);
       
       setAmount('');
       setShowForm(false);
@@ -78,17 +82,21 @@ export default function Home() {
   };
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-24 bg-gray-900 text-white">
+    <main className="flex min-h-screen flex-col items-center justify-center p-6 bg-gray-900 text-white">
       <div className="text-center w-full max-w-md">
-        <h1 className="text-5xl font-bold mb-4 text-green-400">CeloPay Links</h1>
-        <p className="text-xl mb-8">Crea enlaces de pago en USDC en la red Celo.</p>
+        <h1 className="text-4xl font-bold mb-2 text-green-400">CeloPay Links</h1>
+        <p className="text-lg mb-6 text-gray-400">Crea enlaces de pago en USDC en la red Celo.</p>
 
         {isConnected ? (
           <div className="flex flex-col items-center gap-4 w-full">
-            <p className="text-green-300 font-mono bg-gray-800 p-2 rounded">
-              Conectado: {address?.slice(0, 6)}...{address?.slice(-4)}
-            </p>
-            
+            {!isMiniPay && (
+              <>
+                <p className="text-green-300 font-mono bg-gray-800 p-2 rounded text-sm">
+                  Conectado: {address?.slice(0, 6)}...{address?.slice(-4)}
+                </p>
+              </>
+            )}
+
             {!showForm && !generatedLink ? (
               <button
                 onClick={() => setShowForm(true)}
@@ -109,10 +117,10 @@ export default function Home() {
                 />
                 <button
                   type="submit"
-                  disabled={isPending || isConfirming}
+                  disabled={isPending}
                   className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition-colors disabled:bg-gray-500"
                 >
-                  {isPending ? 'Firmando...' : isConfirming ? 'Confirmando...' : 'Generar Enlace'}
+                  {isPending ? 'Firmando...' : 'Generar Enlace'}
                 </button>
                 <button
                   type="button"
@@ -144,12 +152,14 @@ export default function Home() {
               </div>
             )}
 
-            <button
-              onClick={() => disconnect()}
-              className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition-colors mt-4 w-full"
-            >
-              Desconectar
-            </button>
+            {!isMiniPay && (
+              <button
+                onClick={() => disconnect()}
+                className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition-colors mt-4 w-full"
+              >
+                Desconectar
+              </button>
+            )}
           </div>
         ) : (
           <button
