@@ -109,6 +109,7 @@ function PayPageContent() {
           </div>
         ) : isConnected ? (
           <div className="flex flex-col gap-4">
+            {/* Ocultamos la dirección si estamos en MiniPay */}
             {!isMiniPay && (
               <p className="text-green-300 font-mono bg-gray-700 p-2 rounded text-sm">
                 Pagando desde: {address?.slice(0, 6)}...{address?.slice(-4)}
@@ -121,6 +122,7 @@ function PayPageContent() {
             >
               {isPending ? 'Procesando...' : `Pagar ${amount} USDC`}
             </button>
+            {/* Ocultamos el botón de desconectar si estamos en MiniPay */}
             {!isMiniPay && (
               <button
                 onClick={() => disconnect()}
