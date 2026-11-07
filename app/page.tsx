@@ -42,6 +42,7 @@ export default function Home() {
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
   const [isMiniPay, setIsMiniPay] = useState(false);
 
+  // Detectar si estamos dentro de MiniPay
   useEffect(() => {
     if (typeof window !== 'undefined' && (window as any).ethereum?.isMiniPay) {
       setIsMiniPay(true);
@@ -90,12 +91,11 @@ export default function Home() {
 
         {isConnected ? (
           <div className="flex flex-col items-center gap-4 w-full">
+            {/* Ocultamos la dirección si estamos en MiniPay */}
             {!isMiniPay && (
-              <>
-                <p className="text-green-300 font-mono bg-gray-800 p-2 rounded text-sm">
-                  Conectado: {address?.slice(0, 6)}...{address?.slice(-4)}
-                </p>
-              </>
+              <p className="text-green-300 font-mono bg-gray-800 p-2 rounded text-sm">
+                Conectado: {address?.slice(0, 6)}...{address?.slice(-4)}
+              </p>
             )}
 
             {!showForm && !generatedLink ? (
@@ -153,6 +153,7 @@ export default function Home() {
               </div>
             )}
 
+            {/* Ocultamos el botón de desconectar si estamos en MiniPay */}
             {!isMiniPay && (
               <button
                 onClick={() => disconnect()}
