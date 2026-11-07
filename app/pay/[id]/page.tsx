@@ -3,10 +3,10 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useAccount, useConnect, useDisconnect, useChainId, useSwitchChain, useWriteContract } from 'wagmi';
 import { parseUnits } from 'viem';
-import { celoSepolia, CONTRACT_ADDRESS } from '../../config';
+import { celo, CONTRACT_ADDRESS } from '../../config';
 import { useSearchParams } from 'next/navigation';
 
-const USDC_ADDRESS = '0x01C5C0122039549AD1493B8220cABEdD739BC44E';
+const USDC_ADDRESS = '0xcebA9300f2b948710d2653dD7B07f33A8B32118C';
 
 const contractAbi = [
   {
@@ -54,17 +54,17 @@ function PayPageContent() {
   }, [isConnected, connect, connectors]);
 
   useEffect(() => {
-    if (isConnected && chainId !== celoSepolia.id) {
-      switchChain({ chainId: celoSepolia.id });
+    if (isConnected && chainId !== celo.id) {
+      switchChain({ chainId: celo.id });
     }
   }, [isConnected, chainId, switchChain]);
 
   const handlePay = async () => {
     if (!amount || !to) return;
     
-    if (chainId !== celoSepolia.id) {
-      try { switchChain({ chainId: celoSepolia.id }); return; } 
-      catch (error) { alert("Cambia a Celo Sepolia en tu billetera."); return; }
+    if (chainId !== celo.id) {
+      try { switchChain({ chainId: celo.id }); return; } 
+      catch (error) { alert("Cambia a Celo Mainnet en tu billetera."); return; }
     }
 
     try {
