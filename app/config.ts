@@ -1,8 +1,8 @@
 import { http, createConfig } from 'wagmi'
-import { celo as celoChain } from 'wagmi/chains' // Renombramos la importación
+import { celo as celoChain } from 'wagmi/chains'
 import { injected } from 'wagmi/connectors'
 
-// Exportamos la red para que page.tsx pueda usarla
+// ESTA LÍNEA ES LA QUE FALTA: Exportamos 'celo' para que los page.tsx lo encuentren
 export const celo = celoChain;
 
 export const config = createConfig({
