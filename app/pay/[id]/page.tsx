@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useAccount, useConnect, useDisconnect, useChainId, useSwitchChain, useWriteContract } from 'wagmi';
 import { parseUnits } from 'viem';
 import { celoSepolia, CONTRACT_ADDRESS } from '../../config';
@@ -29,7 +29,7 @@ const contractAbi = [
   }
 ];
 
-export default function PayPage() {
+function PayPageContent() {
   const searchParams = useSearchParams();
   const amount = searchParams.get('amount');
   const to = searchParams.get('to');
@@ -44,11 +44,9 @@ export default function PayPage() {
   const [isPaid, setIsPaid] = useState(false);
   const [isMiniPay, setIsMiniPay] = useState(false);
 
-  // Detectar si estamos dentro de MiniPay
   useEffect(() => {
     if (typeof window !== 'undefined' && (window as any).ethereum?.isMiniPay) {
       setIsMiniPay(true);
-      // Auto-conectar si estamos en MiniPay
       if (!isConnected) {
         connect({ connector: connectors[0] });
       }
@@ -110,7 +108,6 @@ export default function PayPage() {
           </div>
         ) : isConnected ? (
           <div className="flex flex-col gap-4">
-            {/* Ocultamos la dirección si estamos en MiniPay */}
             {!isMiniPay && (
               <p className="text-green-300 font-mono bg-gray-700 p-2 rounded text-sm">
                 Pagando desde: {address?.slice(0, 6)}...{address?.slice(-4)}
@@ -123,7 +120,6 @@ export default function PayPage() {
             >
               {isPending ? 'Procesando...' : `Pagar ${amount} USDC`}
             </button>
-            {/* Ocultamos el botón de desconectar si estamos en MiniPay */}
             {!isMiniPay && (
               <button
                 onClick={() => disconnect()}
@@ -143,5 +139,13 @@ export default function PayPage() {
         )}
       </div>
     </main>
+  );
+}
+
+export default function PayPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-gray-900 text-white">Cargando...</div>}>
+      <PayPageContent />
+    </Suspense>
   );
 }
