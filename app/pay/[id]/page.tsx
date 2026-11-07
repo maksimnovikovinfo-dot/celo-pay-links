@@ -3,7 +3,8 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useAccount, useConnect, useDisconnect, useChainId, useSwitchChain, useWriteContract } from 'wagmi';
 import { parseUnits } from 'viem';
-import { celo, CONTRACT_ADDRESS } from '../../config';
+import { celo } from 'wagmi/chains';
+import { CONTRACT_ADDRESS } from '../../config';
 import { useSearchParams } from 'next/navigation';
 
 const USDC_ADDRESS = '0xcebA9300f2b948710d2653dD7B07f33A8B32118C';
